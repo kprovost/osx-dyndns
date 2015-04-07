@@ -1,0 +1,11 @@
+TSIG Dynamic DNS Updater
+========================
+
+Objective
+---------
+Automatically update DNS entries for my laptop.
+
+Requirements
+------------
+ * OS X
+ * dnspython (port install py-dnspython)

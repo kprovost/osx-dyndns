@@ -10,6 +10,8 @@ import dns.query
 import dns.tsigkeyring
 import dns.update
 
+import ipaddr
+
 # Overrule call to dns.Name.to_wire:
 # There's an issue with compression in the tsig section, which we can't really
 # disable.  The best we can do is to overrule the Name.to_wire() method so it
@@ -142,7 +144,22 @@ class DNSUpdater:
 
         response = dns.query.udp(update, name.server())
 
+    def is_publishable(self, v6addr):
+        a = ipaddr.IPv6Address(v6addr)
+        if a.is_link_local:
+            return False
+        if a.is_private:
+            return False
+        if a.is_site_local:
+            return False
+        return True
+
+    def filter_v6(self, v6):
+        return filter(lambda addr: self.is_publishable(addr), v6)
+
     def update_addresses(self, v4, v6):
+        v6 = self.filter_v6(v6)
+
         print "Update addresses: %s %s" % (v4, v6)
 
         names = self._conf.get_names()

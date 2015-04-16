@@ -9,3 +9,4 @@ Requirements
 ------------
  * OS X
  * dnspython (port install py-dnspython)
+ * ipaddr (port install py-ipaddr)

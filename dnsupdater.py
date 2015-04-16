@@ -10,6 +10,15 @@ import dns.query
 import dns.tsigkeyring
 import dns.update
 
+# Overrule call to dns.Name.to_wire:
+# There's an issue with compression in the tsig section, which we can't really
+# disable.  The best we can do is to overrule the Name.to_wire() method so it
+# never compresses, then things do work.
+orig_to_wire = dns.name.Name.__dict__["to_wire"]
+def new_to_wire(self, output, compress, origin):
+    return orig_to_wire(self, output, None, origin)
+dns.name.Name.to_wire = new_to_wire
+
 class Name:
     def __init__(self, name, parser):
         self._name = name

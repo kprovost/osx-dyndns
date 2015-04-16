@@ -45,9 +45,7 @@ class ConfigLoader:
             self._names.append(Name(name, parser))
 
 class AddrMon:
-    def __init__(self, conf):
-        self._conf = conf
-
+    def __init__(self):
         self._store = SystemConfiguration.SCDynamicStoreCreate(None,
                              "global-network-watcher",
                              self._callback,
@@ -98,6 +96,6 @@ class AddrMon:
 
 def main():
     conf = ConfigLoader()
-    mon = AddrMon(conf)
+    mon = AddrMon()
 
 main()

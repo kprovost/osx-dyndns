@@ -27,6 +27,9 @@ class Name:
         self._updateIPv4 = parser.getboolean(name, 'update-v4')
         self._updateIPv6 = parser.getboolean(name, 'update-v6')
 
+        if not self._name.endswith("."):
+            self._name = "%s." % self._name
+
     def name(self):
         return self._name
 

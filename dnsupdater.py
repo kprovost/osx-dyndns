@@ -12,6 +12,8 @@ import dns.update
 
 import ipaddr
 
+import logging
+
 # Overrule call to dns.Name.to_wire:
 # There's an issue with compression in the tsig section, which we can't really
 # disable.  The best we can do is to overrule the Name.to_wire() method so it
@@ -30,6 +32,7 @@ class Name:
         self._updateIPv6 = parser.getboolean(name, 'update-v6')
 
         if not self._name.endswith("."):
+            logging.debug("Append '.' to %s" % self._name)
             self._name = "%s." % self._name
 
     def name(self):
@@ -58,13 +61,16 @@ class ConfigLoader:
     def __init__(self):
         try:
             parser = ConfigParser.SafeConfigParser()
+            logging.info("Reading config file %s" % self.config_file())
             parser.read(self.config_file())
         except ConfigParser.ParsingError, err:
             print "Failed to load config %s: %s" % (self.config_file(), err)
 
         self._names = []
         for name in parser.sections():
-            self._names.append(Name(name, parser))
+            n = Name(name, parser)
+            logging.debug("Found name %s" % n)
+            self._names.append(n)
 
     def get_names(self):
         return self._names
@@ -94,6 +100,7 @@ class AddrMon:
         print "Callback!"
 
     def start(self):
+        logging.debug("Starting address monitoring loop")
         self.initial_update()
         SystemConfiguration.CFRunLoopRun()
 
@@ -119,6 +126,7 @@ class AddrMon:
         primary_if = self.get_primary_interface()
         v4 = self.get_addrs(primary_if, "IPv4")
         v6 = self.get_addrs(primary_if, "IPv6")
+        logging.info("Found addresses %s, %s" % (v4, v6))
         self._update_callback(v4, v6)
 
 class DNSUpdater:
@@ -142,6 +150,7 @@ class DNSUpdater:
             for addr in v6:
                 update.add(name.name(), 60, 'AAAA', addr)
 
+        logging.info("Update DNS entries for %s on server %s" % (name.name(), name.server()))
         response = dns.query.udp(update, name.server())
 
     def is_publishable(self, v6addr):
@@ -160,13 +169,18 @@ class DNSUpdater:
     def update_addresses(self, v4, v6):
         v6 = self.filter_v6(v6)
 
-        print "Update addresses: %s %s" % (v4, v6)
-
         names = self._conf.get_names()
         for name in names:
             self.update_addresses_for_name(name, v4, v6)
 
+def setup_logger():
+        lvl = logging.INFO
+        fmt = "%(asctime)s:%(levelname)s:%(module)s:%(message)s"
+        logging.basicConfig(level=lvl, format=fmt)
+
 def main():
+    setup_logger()
+
     conf = ConfigLoader()
     updater = DNSUpdater(conf)
     mon = AddrMon(updater.update_addresses)

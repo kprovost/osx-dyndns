@@ -23,6 +23,7 @@ class Name:
     def __init__(self, name, parser):
         self._name = name
         self._key = parser.get(name, 'key')
+        self._server = parser.get(name, 'server')
         self._updateIPv4 = parser.getboolean(name, 'update-v4')
         self._updateIPv6 = parser.getboolean(name, 'update-v6')
 
@@ -31,6 +32,9 @@ class Name:
 
     def key(self):
         return self._key
+
+    def server(self):
+        return self._server
 
     def updateIPv4(self):
         return self._updateIPv4
@@ -133,7 +137,7 @@ class DNSUpdater:
             for addr in v6:
                 update.add(name.name(), 60, 'AAAA', addr)
 
-        response = dns.query.udp(update, '5.9.86.228')
+        response = dns.query.udp(update, name.server())
 
     def update_addresses(self, v4, v6):
         print "Update addresses: %s %s" % (v4, v6)

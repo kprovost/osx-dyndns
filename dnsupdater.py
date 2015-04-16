@@ -6,6 +6,10 @@ import os.path
 import Foundation
 import SystemConfiguration
 
+import dns.query
+import dns.tsigkeyring
+import dns.update
+
 class Name:
     def __init__(self, name, parser):
         self._name = name
@@ -44,8 +48,13 @@ class ConfigLoader:
         for name in parser.sections():
             self._names.append(Name(name, parser))
 
+    def get_names(self):
+        return self._names
+
 class AddrMon:
-    def __init__(self):
+    def __init__(self, update_callback):
+        self._update_callback = update_callback
+
         self._store = SystemConfiguration.SCDynamicStoreCreate(None,
                              "global-network-watcher",
                              self._callback,
@@ -84,7 +93,7 @@ class AddrMon:
 
         result = []
         for i in range(Foundation.CFArrayGetCount(addrs)):
-            result.append(Foundation.CFArrayGetValueAtIndex(addrs, i))
+            result.append(str(Foundation.CFArrayGetValueAtIndex(addrs, i)))
 
         return result
 
@@ -92,10 +101,42 @@ class AddrMon:
         primary_if = self.get_primary_interface()
         v4 = self.get_addrs(primary_if, "IPv4")
         v6 = self.get_addrs(primary_if, "IPv6")
+        self._update_callback(v4, v6)
 
+class DNSUpdater:
+    def __init__(self, conf):
+        self._conf = conf
+
+    def update_addresses_for_name(self, name, v4, v6):
+        keyring = dns.tsigkeyring.from_text({ name.name(): name.key() })
+        zone = dns.name.from_text(name.name())
+        update = dns.update.Update(zone,
+                    keyring=keyring,
+                    keyname=name.name(),
+                    keyalgorithm=dns.tsig.HMAC_MD5)
+
+        if name.updateIPv4():
+            update.delete(name.name(), 'A')
+            for addr in v4:
+                update.add(name.name(), 60, 'A', addr)
+        if name.updateIPv6():
+            update.delete(name.name(), 'AAAA')
+            for addr in v6:
+                update.add(name.name(), 60, 'AAAA', addr)
+
+        response = dns.query.udp(update, '5.9.86.228')
+
+    def update_addresses(self, v4, v6):
+        print "Update addresses: %s %s" % (v4, v6)
+
+        names = self._conf.get_names()
+        for name in names:
+            self.update_addresses_for_name(name, v4, v6)
 
 def main():
     conf = ConfigLoader()
-    mon = AddrMon()
+    updater = DNSUpdater(conf)
+    mon = AddrMon(updater.update_addresses)
+    mon.initial_update()
 
 main()

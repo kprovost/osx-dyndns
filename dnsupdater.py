@@ -96,8 +96,9 @@ class AddrMon:
                            SystemConfiguration.SCDynamicStoreCreateRunLoopSource(None, self._store, 0),
                            Foundation.kCFRunLoopCommonModes)
 
-    def _callback(self):
-        print "Callback!"
+    def _callback(self, store, keys, info):
+        # We'll be lazy and just re-query all information and update in one go.
+        self.initial_update()
 
     def start(self):
         logging.debug("Starting address monitoring loop")
@@ -184,6 +185,6 @@ def main():
     conf = ConfigLoader()
     updater = DNSUpdater(conf)
     mon = AddrMon(updater.update_addresses)
-    mon.initial_update()
+    mon.start()
 
 main()

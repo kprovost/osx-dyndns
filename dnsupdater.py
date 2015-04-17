@@ -145,10 +145,12 @@ class DNSUpdater:
         if name.updateIPv4():
             update.delete(name.name(), 'A')
             for addr in v4:
+                logging.debug("Add A record for %s" % addr)
                 update.add(name.name(), 60, 'A', addr)
         if name.updateIPv6():
             update.delete(name.name(), 'AAAA')
             for addr in v6:
+                logging.debug("Add AAAA record for %s" % addr)
                 update.add(name.name(), 60, 'AAAA', addr)
 
         logging.info("Update DNS entries for %s on server %s" % (name.name(), name.server()))

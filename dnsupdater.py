@@ -142,6 +142,8 @@ class AddrMon:
 class DNSUpdater:
     def __init__(self, conf):
         self._conf = conf
+        self._cached_v4 = {}
+        self._cached_v6 = {}
 
     def update_addresses_for_name(self, name, v4, v6):
         keyring = dns.tsigkeyring.from_text({ name.name(): name.key() })
@@ -163,7 +165,13 @@ class DNSUpdater:
                 update.add(name.name(), 60, 'AAAA', addr)
 
         logging.info("Update DNS entries for %s on server %s" % (name.name(), name.server()))
-        response = dns.query.udp(update, name.server())
+        try:
+            response = dns.query.udp(update, name.server())
+        except Exception, e:
+            logging.warn("DNS update failed: %s" % e)
+            # Clear cache so we try again next time.
+            self._cached_v4 = []
+            self._cached_v6 = []
 
     def is_publishable(self, v6addr):
         a = ipaddr.IPv6Address(v6addr)
@@ -178,8 +186,21 @@ class DNSUpdater:
     def filter_v6(self, v6):
         return filter(lambda addr: self.is_publishable(addr), v6)
 
+    def have_addresses_changed(self, v4, v6):
+        if v4 != self._cached_v4:
+            return True
+        if v6 != self._cached_v6:
+            return True
+        return False
+
     def update_addresses(self, v4, v6):
         v6 = self.filter_v6(v6)
+
+        if not self.have_addresses_changed(v4, v6):
+            return
+
+        self._cached_v4 = v4
+        self._cached_v6 = v6
 
         names = self._conf.get_names()
         for name in names:

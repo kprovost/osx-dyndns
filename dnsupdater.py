@@ -108,12 +108,19 @@ class AddrMon:
     def get_primary_interface(self):
         # Assume that it's the same interface for IPv4 and IPv6
         val = SystemConfiguration.SCDynamicStoreCopyValue(self._store, "State:/Network/Global/IPv4")
+        if not val:
+            logging.warn("No response to Sate:/Network/Global/IPv4")
+            return None
         return Foundation.CFDictionaryGetValue(val, "PrimaryInterface")
 
     def get_addrs(self, primary_if, proto):
         val = SystemConfiguration.SCDynamicStoreCopyValue(self._store, "State:/Network/Interface/%s/%s" % (primary_if, proto))
-        if not val or not Foundation.CFDictionaryGetValue(val, "Addresses"):
-            raise Exception("No %s Addresses field" % proto)
+        if not val:
+            logging.warn("No %s on %s" % (primary_if, proto))
+            return []
+        if not Foundation.CFDictionaryGetValue(val, "Addresses"):
+            logging.warn("No %s Addresses field" % proto)
+            return []
 
         addrs = Foundation.CFDictionaryGetValue(val, "Addresses")
 
@@ -125,6 +132,8 @@ class AddrMon:
 
     def initial_update(self):
         primary_if = self.get_primary_interface()
+        if not primary_if:
+            return
         v4 = self.get_addrs(primary_if, "IPv4")
         v6 = self.get_addrs(primary_if, "IPv6")
         logging.info("Found addresses %s, %s" % (v4, v6))

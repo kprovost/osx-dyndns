@@ -98,11 +98,11 @@ class AddrMon:
 
     def _callback(self, store, keys, info):
         # We'll be lazy and just re-query all information and update in one go.
-        self.initial_update()
+        self.update()
 
     def start(self):
         logging.debug("Starting address monitoring loop")
-        self.initial_update()
+        self.update()
         SystemConfiguration.CFRunLoopRun()
 
     def get_primary_interface(self):
@@ -130,7 +130,7 @@ class AddrMon:
 
         return result
 
-    def initial_update(self):
+    def update(self):
         primary_if = self.get_primary_interface()
         if not primary_if:
             return

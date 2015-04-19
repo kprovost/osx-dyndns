@@ -136,6 +136,10 @@ class AddrMon:
             return
         v4 = self.get_addrs(primary_if, "IPv4")
         v6 = self.get_addrs(primary_if, "IPv6")
+
+        if not v4 and not v6:
+            return
+
         logging.info("Found addresses %s, %s" % (v4, v6))
         self._update_callback(v4, v6)
 

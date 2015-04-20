@@ -212,13 +212,16 @@ class DNSUpdater:
             self.update_addresses_for_name(name, v4, v6)
 
 def setup_logger():
-        lvl = logging.INFO
-        fmt = "%(asctime)s:%(levelname)s:%(module)s:%(message)s"
+        lvl = logging.DEBUG
+        fmt = "dnsupdater: %(asctime)s:%(levelname)s:%(module)s:%(message)s"
         logging.basicConfig(level=lvl, format=fmt)
 
         # Default output to syslog
+        syslog = logging.handlers.SysLogHandler()
+        syslog_formatter = logging.Formatter('dnsupdater:%(message)s')
+        syslog.setFormatter(syslog_formatter)
         logger = logging.getLogger()
-        logger.addHandler(logging.handlers.SysLogHandler())
+        logger.addHandler(syslog)
 
 def main():
     setup_logger()

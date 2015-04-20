@@ -13,6 +13,7 @@ import dns.update
 import ipaddr
 
 import logging
+import logging.handlers
 
 # Overrule call to dns.Name.to_wire:
 # There's an issue with compression in the tsig section, which we can't really
@@ -214,6 +215,10 @@ def setup_logger():
         lvl = logging.INFO
         fmt = "%(asctime)s:%(levelname)s:%(module)s:%(message)s"
         logging.basicConfig(level=lvl, format=fmt)
+
+        # Default output to syslog
+        logger = logging.getLogger()
+        logger.addHandler(logging.handlers.SysLogHandler())
 
 def main():
     setup_logger()

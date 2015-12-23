@@ -173,7 +173,7 @@ class DNSUpdater:
         try:
             response = dns.query.udp(update, name.server())
         except Exception, e:
-            logging.warn("DNS update failed: %s" % e)
+            logging.warn("DNS update failed: %s (%s)" % (e, type(e)))
             # Clear cache so we try again next time.
             self._cached_v4 = []
             self._cached_v6 = []

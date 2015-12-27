@@ -27,6 +27,7 @@ dns.name.Name.to_wire = new_to_wire
 class Name:
     def __init__(self, name, parser):
         self._name = name
+        self._zone = parser.get(name, 'zone')
         self._key = parser.get(name, 'key')
         self._server = parser.get(name, 'server')
         self._updateIPv4 = parser.getboolean(name, 'update-v4')
@@ -41,6 +42,9 @@ class Name:
 
     def key(self):
         return self._key
+
+    def zone(self):
+        return self._zone
 
     def server(self):
         return self._server
@@ -153,10 +157,10 @@ class DNSUpdater:
     def update_addresses_for_name(self, name, v4, v6):
         keyring = dns.tsigkeyring.from_text({ name.name(): name.key() })
         zone = dns.name.from_text(name.name())
-        update = dns.update.Update(zone,
+        update = dns.update.Update(name.zone(),
                     keyring=keyring,
                     keyname=name.name(),
-                    keyalgorithm=dns.tsig.HMAC_MD5)
+                    keyalgorithm=dns.tsig.HMAC_SHA256)
 
         if name.updateIPv4():
             update.delete(name.name(), 'A')

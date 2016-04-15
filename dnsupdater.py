@@ -135,18 +135,42 @@ class AddrMon:
 
         return result
 
+    def get_dns_servers(self):
+        val = SystemConfiguration.SCDynamicStoreCopyValue(self._store, "State:/Network/Global/DNS")
+        if not val:
+            logging.warn("No DNS key found")
+            return None
+        servers = Foundation.CFDictionaryGetValue(val, "ServerAddresses")
+        if not servers:
+            logging.warn("No ServerAddresses field for DNS")
+            return None
+
+        result = []
+        for i in range(Foundation.CFArrayGetCount(servers)):
+            result.append(str(Foundation.CFArrayGetValueAtIndex(servers, i)))
+
+        return result
+
     def update(self):
         primary_if = self.get_primary_interface()
         if not primary_if:
             return
         v4 = self.get_addrs(primary_if, "IPv4")
         v6 = self.get_addrs(primary_if, "IPv6")
+        dns_servers = self.get_dns_servers()
+
+        if dns_servers is None:
+            return
+
+        if len(dns_servers) == 0:
+            logging.warn("No DNS server found")
+            return
 
         if not v4 and not v6:
             return
 
         logging.info("Found addresses %s, %s" % (v4, v6))
-        self._update_callback(v4, v6)
+        self._update_callback(dns_servers[0], v4, v6)
 
 class DNSUpdater:
     def __init__(self, conf):
@@ -154,7 +178,7 @@ class DNSUpdater:
         self._cached_v4 = {}
         self._cached_v6 = {}
 
-    def update_addresses_for_name(self, name, v4, v6):
+    def update_addresses_for_name(self, dns_server, name, v4, v6):
         keyring = dns.tsigkeyring.from_text({ name.name(): name.key() })
         zone = dns.name.from_text(name.name())
         update = dns.update.Update(name.zone(),
@@ -173,9 +197,9 @@ class DNSUpdater:
                 logging.debug("Add AAAA record for %s" % addr)
                 update.add(name.name(), 60, 'AAAA', addr)
 
-        logging.info("Update DNS entries for %s on server %s" % (name.name(), name.server()))
+        logging.info("Update DNS entries for %s on server %s" % (name.name(), dns_server))
         try:
-            response = dns.query.udp(update, name.server())
+            response = dns.query.udp(update, dns_server)
         except Exception, e:
             logging.warn("DNS update failed: %s (%s)" % (e, type(e)))
             # Clear cache so we try again next time.
@@ -202,7 +226,7 @@ class DNSUpdater:
             return True
         return False
 
-    def update_addresses(self, v4, v6):
+    def update_addresses(self, dns_server, v4, v6):
         v6 = self.filter_v6(v6)
 
         if not self.have_addresses_changed(v4, v6):
@@ -213,7 +237,7 @@ class DNSUpdater:
 
         names = self._conf.get_names()
         for name in names:
-            self.update_addresses_for_name(name, v4, v6)
+            self.update_addresses_for_name(dns_server, name, v4, v6)
 
 def setup_logger():
         lvl = logging.DEBUG

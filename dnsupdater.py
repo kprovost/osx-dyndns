@@ -235,4 +235,5 @@ def main():
     mon = AddrMon(updater.update_addresses)
     mon.start()
 
-main()
+if __name__ == "__main__":
+    main()
